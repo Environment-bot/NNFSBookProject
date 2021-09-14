@@ -48,6 +48,8 @@ dense1.forward(X)
 # Takes in output from previous layer
 activation1.forward(dense1.output)
 
+# Make a forward pass through activation function
+# it takes the output of second dense layer here
 activation2.forward(activation1.output)
 
 
