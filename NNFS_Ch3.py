@@ -20,12 +20,37 @@ class layer_Dense:
         # Calculate output values from inputs, weights and biases
         self.output = np.dot(inputs, self.weights) + self.biases
         
+class Activation_ReLU:
+    def forward(self, inputs):
+        self.output = np.maximum(0, inputs)
+
+class Activation_Softmax:
+    def forward(self, inputs):
+        # Get unnormalized probabilities
+        exp_values = np.exp(inputs-np.max(inputs, axis=1, keepdims=True))
+
+        # Normalize them for each sample
+        probabilities = exp_values / np.sum(exp_values, axis=1, keepdims=True)
+        self.output = probabilities
 
 
 X, y = spiral_data(samples=100, classes=3)
 
 # input data has x and y cordinate
 dense1 = layer_Dense(2, 3)
+activation1 = Activation_ReLU()
+activation2 = Activation_Softmax()
+
+# Make a forward pass of our training data through this layer
 dense1.forward(X)
 
-print(dense1.output[:5])
+# Forward pass through activation func.
+# Takes in output from previous layer
+activation1.forward(dense1.output)
+
+activation2.forward(activation1.output)
+
+
+# Let's see output of the first few samples:
+print(activation1.output[:5])
+print(activation2.output[:5])
