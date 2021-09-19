@@ -1,11 +1,51 @@
 import numpy as np
 
-layer_outputs = np.array([[4.8, 1.21, 2.385],
-[8.9, -1.81, 0.2],
-[1.41, 1.051, 0.026]])
+# softmax_outputs = np.array([[0.7, 0.1, 0.2],
+# [0.1, 0.5, 0.4],
+# [0.02, 0.9, 0.08]])
+# class_targets = np.array([1, 0, 0],
+#                         [0, 1, 0],
+#                         [1, 0, 0])
+# print(len(class_targets.shape))
 
-exp_values = np.exp(layer_outputs)
-norm_values = exp_values / np.sum(exp_values, axis=1, keepdims=True)
 
-# print(norm_values)
+# if len(class_targets.shape) == 1:
+#     # first dimensions can be passed as range[1,2,3]
+#     # second value choses which value is taken from that array
+#     # this works only with output as 2D and class target as 1D array
+#     correct_confidences = softmax_outputs[
+#     range(len(softmax_outputs)),
+#     class_targets
+#     ]
+
+# elif len(class_targets.shape) == 2:
+#     #this code gets output as 2D array as well as class targets
+#     # then it goes sum function between all of the values
+#     # [0.7, 0.1, 0.2]*[1, 0, 0] is first multiplyed by targets values 
+#     # and then it is summed -> 0,7*1+0*0,1... => 0,7
+#     correct_confidences = np.sum(
+#     softmax_outputs*class_targets,
+#     axis=1)
+
+# correct_confidences = np.array([0.7, 0.5, 0.9])
+
+# print(-np.log(0.9999999999999))
+
+# Probabilities of 3 samples
+softmax_outputs = np.array([[0.7, 0.2, 0.1],
+[0.5, 0.1, 0.4],
+[0.02, 0.9, 0.08]])
+# Target (ground-truth) labels for 3 samples
+class_targets = np.array([0, 1, 1])
+
+predictions  = np.argmax(softmax_outputs, axis=1)
+print(predictions)
+
+if len(class_targets.shape) == 2:
+    class_targets = np.argmax(softmax_outputs, axis=1)
+print(predictions == class_targets)
+accuracy = np.mean(predictions == class_targets)
+print(class_targets)
+print('acc :', accuracy)
+
 

@@ -35,3 +35,43 @@ More on this topic on pages 88-97.
 This is used for clasification layer aka "output" layer to choose correct output. this clasificators output is called **confidence score** 
 
 This is prosent number which describes each predictions **confidence score**
+
+# Cross-entropy loss
+
+with cross entropy we can calculte from multiple outputs what is our overall loss as well our summed loss in a batch
+
+```python
+softmax_outputs = np.array([[0.7, 0.1, 0.2],
+[0.1, 0.5, 0.4],
+[0.02, 0.9, 0.08]])
+class_targets = np.array([1, 0, 0],
+                        [0, 1, 0],
+                        [1, 0, 0])
+print(len(class_targets.shape))
+
+
+if len(class_targets.shape) == 1:
+    # first dimensions can be passed as range[1,2,3]
+    # second value choses which value is taken from that array
+    # this works only with output as 2D and class target as 1D array
+    correct_confidences = softmax_outputs[
+    range(len(softmax_outputs)),
+    class_targets
+    ]
+
+elif len(class_targets.shape) == 2:
+    #this code gets output as 2D array as well as class targets
+    # then it goes sum function between all of the values
+    # [0.7, 0.1, 0.2]*[1, 0, 0] is first multiplyed by targets values 
+    # and then it is summed -> 0,7*1+0*0,1... => 0,7
+    correct_confidences = np.sum(
+    softmax_outputs*class_targets,
+    axis=1)
+```
+
+# Accuracy calcultaion (129-130)
+
+we can calculate accuracy as simple as taking output from our model and compering it to our ground truth "y"
+
+First we will take our softmax outputs and convert it to ones and zeros regarding which value has highest confidence from softwmax. Then it is compared our "y" values and those values comparations mean is then our accuracy.
+
