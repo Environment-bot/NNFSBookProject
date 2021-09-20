@@ -1,7 +1,7 @@
 # This block of code includes classes for our neuarl network
 import numpy as np
 import nnfs
-from nnfs.datasets import spiral_data
+from nnfs.datasets import vertical_data
 nnfs.init()
 
 class layer_Dense:
@@ -71,7 +71,7 @@ class Loss_CategoricalCrossentropy(Loss):
 
 
 
-X, y = spiral_data(samples=100, classes=3)
+X, y = vertical_data(samples=100, classes=3)
 
 # input data has x and y cordinate
 dense1 = layer_Dense(2, 3)
