@@ -18,11 +18,30 @@ class layer_Dense:
         
     def forward(self, inputs):
         # Calculate output values from inputs, weights and biases
+        self.inputs = inputs
         self.output = np.dot(inputs, self.weights) + self.biases
-        
+
+    def backward(self, dvalues):
+        # Gradients on parameters
+        self.dvalues = np.dot(self.inputs.T, dvalues)
+        self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
+        #gradient on values
+        self.dinputs = np.dot(dvalues, self.weights.T)
+
+
+
+
 class Activation_ReLU:
     def forward(self, inputs):
         self.output = np.maximum(0, inputs)
+
+    def backward(self, dvalues):
+        # Since we need to modify the original variable,
+        # let's make a copy of the values first
+        self.dinputs = dvalues.copy()
+
+        # Zero gradient where input values were negative
+        self.dinputs[self.inputs <= 0] = 0
 
 class Activation_Softmax:
     def forward(self, inputs):
@@ -32,6 +51,23 @@ class Activation_Softmax:
         # Normalize them for each sample
         probabilities = exp_values / np.sum(exp_values, axis=1, keepdims=True)
         self.output = probabilities
+
+    def backward(self, dvalues):
+        # create uniitialized array
+        self.dinput = np.empty_like(dvalues)
+
+        for index, (single_output, single_dvalues) in \
+                    enumerate(zip(self.output, dvalues)):
+            # flatten output array
+            single_output = single_output.reshape(-1,1)
+            #calculate jacobian matrix of the output
+            jacobian_matrix = np.diagflat(single_output) - \
+                                np.dot(single_output, single_output.T)
+            # Calculate sample-wise gradient
+            # and add it to the array of sample gradients
+            self.dinputs[index] = np.dot(jacobian_matrix,
+                                            single_dvalues)
+
 
 # common loss class
 class Loss:
@@ -68,7 +104,50 @@ class Loss_CategoricalCrossentropy(Loss):
         negative_log_likelihoods = -np.log(correct_confidences)
         return negative_log_likelihoods
 
+    def backward (self, dvalues, y_true):
+        #number of samples
+        samples = len(dvalues)
+        #number of labels in every sample
+        # we'll use the first sample to count them
+        labels = len(dvalues[0])
 
+        # if labels are sparse, turn them into one-hot vector
+        if len(y_true.shape ==1):
+            y_true = np.eye(labels)[y_true]
+        # Calculate gradient
+        self.dinputs = -y_true / dvalues
+        # Normalize gradient
+        self.dinputs = self.dinputs / samples
+
+    
+class Activation_Softmax_Loss_CategoricalCrossentropy():
+    def __init__(self):
+        self.activation = Activation_Softmax()
+        self.loss = Loss_CategoricalCrossentropy()
+
+    def forward(self, inputs, y_true):
+        # Output layer's activation function
+        self.activation.forward(inputs)
+        # Set the output
+        self.output = self.activation.output
+        # Calculate and return loss value
+        return self.loss.calculate(self.output, y_true)
+
+    def backward(self, dvalues, y_true):
+
+        # Number of samples
+        samples = len(dvalues)
+        # If labes are one-hot encoded,
+        # turn them into dscrete values
+        if len(y_true.shape) == 2:
+            y_true = np.argmax(y_true, axis=1)
+        
+        #copy so we can safely modify
+        self.dinputs = dvalues.copy()
+        # calculate gradient
+        self.dinputs[range(samples), y_true] -= 1
+        # Normalize gradient
+        self.dinputs = self.dinputs / samples
 
 
 X, y = spiral_data(samples=100, classes=3)
