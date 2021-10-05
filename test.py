@@ -50,5 +50,28 @@ drelu_dx1 = drelu_dxw1 * dmul_dx1
 drelu_dw1 = drelu_dxw1 * dmul_dw1
 drelu_dx2 = drelu_dxw2 * dmul_dx2
 drelu_dw2 = drelu_dxw2 * dmul_dw2
-print(drelu_dx0, drelu_dw0, drelu_dx1, drelu_dw1, drelu_dx2, drelu_dw2)
+# print(drelu_dx0, drelu_dw0, drelu_dx1, drelu_dw1, drelu_dx2, drelu_dw2)
+
+dx = [drelu_dx0, drelu_dx1, drelu_dx2] # gradients on inputs
+dw = [drelu_dw0, drelu_dw1, drelu_dw2] # gradients on weights
+db = drelu_db # gradient on bias...just 1 bias here
+
+print(dw)
+print(w, b)
+
+w[0] += -0.001*dw[0]
+w[1] += -0.001*dw[1]
+w[2] += -0.001*dw[2]
+b += -0.001*db
+
+print(w, b)
+
+xw0 = x[0]*w[0]
+xw1 = x[1]*w[1]
+xw2 = x[2]*w[2]
+
+z = xw0 + xw1 + xw2 + b
+
+y = max(z, 0)
+print(y)
 
