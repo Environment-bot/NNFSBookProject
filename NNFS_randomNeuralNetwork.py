@@ -54,7 +54,7 @@ class Activation_Softmax:
 
     def backward(self, dvalues):
         # create uniitialized array
-        self.dinput = np.empty_like(dvalues)
+        self.dinputs = np.empty_like(dvalues)
 
         for index, (single_output, single_dvalues) in \
                     enumerate(zip(self.output, dvalues)):
@@ -86,19 +86,23 @@ class Loss_CategoricalCrossentropy(Loss):
     def forward(self, y_pred, y_true):
         # number of the samples in a batch
         samples = len(y_pred)
-
         # forces value to be between 1e-7 and 1 - 1e-7 
         # this gets noll value and over 1 value problems away
         y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
 
         # probabilities for target values - 
-        # only if categorial labels
+        # only if categorical labels
         if len(y_true.shape) == 1:
-            # if we have same 
-            correct_confidences = y_pred_clipped[range(samples), y_true]
-
+            correct_confidences = y_pred_clipped[
+            range(samples),
+            y_true
+            ]
+        # Mask values - only for one-hot encoded labels
         elif len(y_true.shape) == 2:
-            correct_confidences = np.sum(y_pred_clipped*y_true, axis=1)
+            correct_confidences = np.sum(
+            y_pred_clipped * y_true,
+            axis=1
+            )
         
         #loss
         negative_log_likelihoods = -np.log(correct_confidences)
@@ -112,7 +116,8 @@ class Loss_CategoricalCrossentropy(Loss):
         labels = len(dvalues[0])
 
         # if labels are sparse, turn them into one-hot vector
-        if len(y_true.shape ==1):
+        
+        if len(y_true.shape) == 1:
             y_true = np.eye(labels)[y_true]
         # Calculate gradient
         self.dinputs = -y_true / dvalues
@@ -160,73 +165,23 @@ activation2 = Activation_Softmax()
 loss_function = Loss_CategoricalCrossentropy()
 
 
-# # Make a forward pass of our training data through this layer
-# dense1.forward(X)
+softmax_outputs = np.array([[0.7, 0.1, 0.2],
+                            [0.1, 0.5, 0.4],
+                            [0.02, 0.9, 0.08]])
+class_targets = np.array([0, 1, 1])
 
-# # Forward pass through activation func.
-# # Takes in output from previous layer
-# activation1.forward(dense1.output)
+softmax_loss = Activation_Softmax_Loss_CategoricalCrossentropy()
+softmax_loss.backward(softmax_outputs, class_targets)
+dvalues1 = softmax_loss.dinputs
 
-# # passing values to new dense layer 2
-# dense2.forward(activation1.output)
+activation = Activation_Softmax()
+activation.output = softmax_outputs
+loss = Loss_CategoricalCrossentropy()
+loss.backward(softmax_outputs, class_targets)
+activation.backward(loss.dinputs)
+dvalues2 = activation.dinputs
 
-# # Make a forward pass through activation function
-# # it takes the output of second dense layer here
-# activation2.forward(dense2.output)
-
-# print(activation2.output[:5])
-
-# loss = loss_function.calculate(activation2.output, y)
-# # Let's see output of the first few samples:
-# print('loss: ', loss)
-
-# # accuracy
-
-# predictions = np.argmax(activation2.output, axis=1)
-# if len(y.shape) == 2:
-#     y = np.argmax(y, axis=1)
-# accuracy = np.mean( predictions == y)
-
-# print('acc: ', accuracy)
-
-# indroduction optimization
-
-lowest_loss = 9999999 # some initial value
-best_dense1_weights = dense1.weights.copy()
-best_dense1_biases = dense1.biases.copy()
-best_dense2_weights = dense2.weights.copy()
-best_dense2_biases = dense2.biases.copy()
-
-for iteration in range(100000):
-    dense1.weights += 0.05 * np.random.randn(2, 3)
-    dense1.biases += 0.05 * np.random.randn(1, 3)
-    dense2.weights += 0.05 * np.random.randn(3, 3)
-    dense2.biases += 0.05 * np.random.randn(1, 3)
-
-    # perform forward pass of the trainig data through this layer
-    dense1.forward(X)
-    activation1.forward(dense1.output)
-    dense2.forward(activation1.output)
-    activation2.forward(dense2.output)
-
-    # Perform a forward pass through activation function
-    # it takes the output of second dense layer here and returns loss
-    loss = loss_function.calculate(activation2.output, y)
-    # Calculate accuracy from output of activation2 and targets
-    # calculate values along first axis
-    predictions = np.argmax(activation2.output, axis=1)
-    accuracy = np.mean(predictions == y)
-    # If loss is smaller - print and save weights and biases aside
-    if loss < lowest_loss:
-        print('New set of weights found, iteration:', iteration,
-        'loss:', loss, 'acc:', accuracy)
-        best_dense1_weights = dense1.weights.copy()
-        best_dense1_biases = dense1.biases.copy()
-        best_dense2_weights = dense2.weights.copy()
-        best_dense2_biases = dense2.biases.copy()
-        lowest_loss = loss
-    else:
-        dense1.weights = best_dense1_weights.copy()
-        dense1.biases = best_dense1_biases.copy()
-        dense2.weights = best_dense2_weights.copy()
-        dense2.biases = best_dense2_biases.copy()
+print('Gradients: combined loss and activation:')
+print(dvalues1)
+print('Gradients: separate loss and activation:')
+print(dvalues2)
