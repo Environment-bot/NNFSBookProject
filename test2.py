@@ -103,9 +103,16 @@ import numpy as np
 # print(weights)
 # print(biases)
 
-starting_learning_rate = 1.
-learning_rate_decay = 0.02
-for step in range(20):
-    learning_rate = starting_learning_rate * \
-    (1. / (1 + learning_rate_decay * step))
-    print(learning_rate)
+# starting_learning_rate = 1.
+# learning_rate_decay = 0.02
+# for step in range(20):
+#     learning_rate = starting_learning_rate * \
+#     (1. / (1 + learning_rate_decay * step))
+#     print(learning_rate)
+
+weights = np.array([[0.2, 0.8, -0.5, 1],
+                    [0.5, -0.91, 0.26, -0.5],
+                    [-0.26, -0.27, 0.17, 0.87]])
+dL1 = np.ones_like(weights)
+print(dL1)
+dL1[weights < 0] = -1
