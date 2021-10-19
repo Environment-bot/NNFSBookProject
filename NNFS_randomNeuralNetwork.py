@@ -96,6 +96,24 @@ class Activation_Softmax:
             self.dinputs[index] = np.dot(jacobian_matrix,
                                             single_dvalues)
 
+class Layer_Dropout:
+    #init
+    def __init__(self, rate):
+        # Store rate, we invert it as for example for dropout
+        # of 0.1 we need success rate of 0.9
+        self.rate = 1- rate
+
+    def forward(self, inputs):
+        #save input values
+        self.inputs = inputs
+        # Generate and save sclaed mask
+        self.binary_mask = np.random.binomial(1, self.rate,
+                                             size=inputs.shape) / self.rate
+        self.output = inputs * self.binary_mask
+
+    def backward(self, dvalues):
+        # gradient on values
+        self.dinputs = dvalues * self.binary_mask
 
 # common loss class
 class Loss:
@@ -410,18 +428,20 @@ X, y = spiral_data(samples=1000, classes=3)
 dense1 = layer_Dense(2, 512, weight_regularizer_l2=5e-4, bias_regularizer_l2=5e-4)
 dense2 = layer_Dense(512, 3)
 activation1 = Activation_ReLU()
+dropout1 = Layer_Dropout(0.1)
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 # optimizer = Optimizer_SGD(learning_rate=1, decay=1e-3, momentum=0.9)
 # optimizer = AdaGrad(learning_rate=1, decay=1e-4)
 # optimizer = Optmizer_RMSprop(learning_rate=0.02,decay=1e-4, rho=0.999)
-optimizer = Optmizer_Adam(learning_rate=0.05,decay=5e-7)
+optimizer = Optmizer_Adam(learning_rate=0.05,decay=5e-5)
 
 
 
 for epoch in range(10001):
     dense1.forward(X)
     activation1.forward(dense1.output)
-    dense2.forward(activation1.output)
+    dropout1.forward(activation1.output)
+    dense2.forward(dropout1.output)
     # loss = loss_activation.forward(dense2.output, y)
     data_loss = loss_activation.forward(dense2.output, y)
 
@@ -454,7 +474,8 @@ for epoch in range(10001):
     # Backward pass
     loss_activation.backward(loss_activation.output, y)
     dense2.backward(loss_activation.dinputs)
-    activation1.backward(dense2.dinputs)
+    dropout1.backward(dense2.dinputs)
+    activation1.backward(dropout1.dinputs)
     dense1.backward(activation1.dinputs)
 
     # Update weights and biases
