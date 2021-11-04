@@ -1,10 +1,18 @@
 # This block of code includes classes for our neuarl network
+import os
+import urllib
+import urllib.request
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.core.numeric import outer
 import nnfs
 from nnfs.datasets import spiral_data as data
 nnfs.init()
+
+
+URL = 'https://nnfs.io/datasets/fashion_mnist_images.zip'
+FILE = 'fashion_mnist_images.zip'
+FOLDER = 'fashion_mnist_images'
 
 class layer_Dense:
 
