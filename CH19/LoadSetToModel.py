@@ -25,7 +25,7 @@ def load_mnist_dataset(dataset, path):
             X.append(image)
             y.append(label)
 
-    return np.array(X), np.array(y).astype('uint8')
+    return np.array(X), np.array(y).astype(np.uint8)
 
 # MNIST dataset (train + test)
 def create_data_mnist(path):
@@ -36,4 +36,13 @@ def create_data_mnist(path):
 
     # And return all the data
     return X, y, X_test, y_test
+np.set_printoptions(linewidth=200)
+X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
+
+
+X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
+X_test = (X_test.reshape(X_test.shape[0], -1).astype(np.float32) -
+             127.5) / 127.5
+
+print(X[:1])
 

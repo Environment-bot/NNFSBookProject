@@ -568,7 +568,7 @@ class Model:
         self.loss = loss
         self.optimizer = optimizer
         self.accuracy = accuracy
-
+    
     def train(self, X, y, *, epochs=1, batch_size=None,
                 print_every=1, validation_data=None):
 
@@ -622,36 +622,40 @@ class Model:
                 if batch_size is None:
                     batch_X = X
                     batch_y = y
+                # Otherwise slice a batch
+                else:
+                    batch_X = X[step*batch_size:(step+1)*batch_size]
+                    batch_y = y[step*batch_size:(step+1)*batch_size]
 
                 # perform training loop
-                output = self.forward(X, training=True)
+                output = self.forward(batch_X, training=True)
 
                 # Calculate loss
                 data_loss, regularization_loss = \
-                    self.loss.calculate(output, y,
+                    self.loss.calculate(output, batch_y,
                                         include_regularization= True)
                 loss = data_loss + regularization_loss
 
                 # Get predictions and calculate an accuracy
                 predictions = self.output_layer_activation.predictions(output)
-                accuracy = self.accuracy.calculate(predictions, y)
+                accuracy = self.accuracy.calculate(predictions, batch_y)
 
                 # Perform backward pass
-                self.backward(output, y)
+                self.backward(output, batch_y)
 
                 # Optimize (update parameters)
                 self.optimizer.pre_update_params()
                 for layer in self.trainable_layers:
                     self.optimizer.update_params(layer)
-                    self.optimizer.post_update_params()
+                self.optimizer.post_update_params()
                 # Print a summary
                 if not step % print_every or step == train_steps - 1:
                     print(f'step: {step}, ' +
-                    f'acc: {accuracy:.3f}, ' +
-                    f'loss: {loss:.3f} (' +
-                    f'data_loss: {data_loss:.3f}, ' +
-                    f'reg_loss: {regularization_loss:.3f}), ' +
-                    f'lr: {self.optimizer.current_learning_rate}')
+                            f'acc: {accuracy:.3f}, ' +
+                            f'loss: {loss:.3f} (' +
+                            f'data_loss: {data_loss:.3f}, ' +
+                            f'reg_loss: {regularization_loss:.3f}), ' +
+                            f'lr: {self.optimizer.current_learning_rate}')
 
             # get and print epoch loss and accuracy
             epoch_data_loss, epoch_regularization_loss = \
@@ -697,16 +701,16 @@ class Model:
                 
 
                     # perform the forward pass
-                    output = self.forward(X_val, training=False)
+                    output = self.forward(batch_X, training=False)
 
                     # Calculate the loss
-                    loss = self.loss.calculate(output, y_val)
+                    loss = self.loss.calculate(output, batch_y)
 
                     # get predictions and calculate an accuracy
                     predictions = self.output_layer_activation.predictions(
                         output
                     )
-                    accuracy = self.accuracy.calculate(predictions, y_val)
+                    accuracy = self.accuracy.calculate(predictions, batch_y)
                     
                 # Get and print validation loss and accuracy
                 validation_loss = self.loss.calculate_accumulated()
@@ -887,9 +891,54 @@ class Accuracy_Categorical(Accuracy):
             y= np.argmax(y, axis=1)
         return predictions == y
 
-    
-X, y = data(samples=1000, classes=3)
-X_test, y_test = data(samples=1000, classes=3)
+# Load minst dataset
+def load_mnist_dataset(dataset, path):
+
+    #scan all the directories and create a list of labels
+    labels = os.listdir(os.path.join(path, dataset))
+
+    # create list of samples and labels
+    X = []
+    y = []
+
+    # for each lable folder
+    for label in labels:
+        # And for each image in given folder
+        for file in os.listdir(os.path.join(path, dataset, label)):
+            # read the image
+            image = cv2.imread(
+                os.path.join(path, dataset, label, file), 
+                cv2.IMREAD_UNCHANGED)
+
+            # And append the data and labels to lists
+            X.append(image)
+            y.append(label)
+
+    return np.array(X), np.array(y).astype(np.uint8)
+# MNIST dataset (train + test)
+def create_data_mnist(path):
+
+    # Load both sets separately
+    X, y = load_mnist_dataset('train', path)
+    X_test, y_test = load_mnist_dataset('test', path)
+
+    # And return all the data
+    return X, y, X_test, y_test
+
+X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
+
+
+
+X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
+X_test = (X_test.reshape(X_test.shape[0], -1).astype(np.float32) -
+             127.5) / 127.5
+
+
+keys = np.array(range(X.shape[0]))
+np.random.shuffle(keys)
+X = X[keys]
+y = y[keys]   
+
 
 # y = y.reshape(-1, 1)
 # y_test = y_test.reshape(-1, 1)
@@ -897,18 +946,18 @@ X_test, y_test = data(samples=1000, classes=3)
 model = Model()
 
 # add layers
-model.add(layer_Dense(2,512, weight_regularizer_l2=5e-4,
-                            bias_regularizer_l2=5e-4))
+model.add(layer_Dense(X.shape[1], 64))
 model.add(Activation_ReLU())
-model.add(Layer_Dropout(0.1))
-model.add(layer_Dense(512,3))
+model.add(layer_Dense(64,64))
+model.add(Activation_ReLU())
+model.add(layer_Dense(64,10))
 model.add(Activation_Softmax())
 
 
 # set loss and optimizer objects
 model.set(
     loss=Loss_CategoricalCrossentropy(),
-    optimizer=Optmizer_Adam(learning_rate=0.05 ,decay=5e-5),
+    optimizer=Optmizer_Adam(decay=5e-5),
     accuracy=Accuracy_Categorical()
 )
 
@@ -917,4 +966,4 @@ model.finalize()
 
 # Train the model
 model.train(X, y, validation_data=(X_test, y_test),
-            epochs=10000, print_every=100)
+            epochs=10, batch_size=128, print_every=100)
