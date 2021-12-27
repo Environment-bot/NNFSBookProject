@@ -7,6 +7,7 @@ from nnfs.datasets import spiral_data as data
 import cv2
 import os
 import pickle
+import copy
 nnfs.init()
 
 
@@ -858,7 +859,86 @@ class Model:
         # Open a file in the binary-write mode
         # and save parameters to it
         with open(path, 'wb') as f:
-            pickel.dump(self.get_parameters(), f)
+            pickle.dump(self.get_parameters(), f)
+    def load_parameters(self, path):
+        # open file in the binary-read mode,
+        # load weights and update trainable layers
+        with open(path, 'rb') as f:
+            self.set_parameters(pickle.load(f))
+
+    def save(self, path):
+        # Make a deep copy of current model instance
+        model = copy.deepcopy(self)
+
+        # Reset accumulated values in loss and accuracy objects
+        model.loss.new_pass()
+        model.accuracy.new_pass()
+
+        # Remove data from the input layer
+        # and gradients from the loss object
+        model.input_layer.__dict__.pop('output', None)
+        model.loss.__dict__.pop('dinputs', None)
+
+        # For each layer remove inptus, output and dinputs properties
+        for layer in model.layers:
+            for property in ['inputs', 'output', 'dinputs',
+                                'dweights', 'dbiases']:
+                        layer.__dict__.pop(property, None)
+
+        # Open a file in the binary-write mode and save the model
+        with open(path, 'wb') as f:
+            pickle.dump(model, f)
+
+    # Loads and returns a model
+    @staticmethod
+    def load(path):
+        # Open file in the binary-read mode, load a model
+        with open(path, 'rb') as f:
+            model = pickle.load(f)
+
+        # Return a model
+        return model
+
+    def predict(self, X, *, batch_size= None):
+
+        # Default value if batch size is not being set
+        prediction_steps = 1
+
+        # Calculate number of steps
+        if batch_size is not None:
+            prediction_steps = len(X) // batch_size
+            # Dividing rounds down. If there are some remaining
+            # Data, but not a full batch, this wont inlude it
+            # add '1' to include this not full batch
+            if prediction_steps * batch_size < len(X):
+                 prediction_steps += 1
+        
+        # Model outputs
+        output = []
+
+        # Iterate over steps
+        for step in range(prediction_steps):
+
+            # If batch size is not set -
+            # train using one step and full dataset
+            if batch_size is None:
+                batch_X = X
+            
+            # Otherwise slice a batch
+            else:
+                batch_X = X[step*batch_size:(step+1)*batch_size]
+
+            # Perform the forward pass
+            batch_output = self.forward(batch_X, training=False)
+
+            # Append batch prediction to the list of predictions
+            output.append(batch_output)
+
+        return np.vstack(output)
+
+        
+
+    
 class Accuracy:
 
     # Calculates an accuracy
@@ -964,9 +1044,32 @@ def create_data_mnist(path):
     # And return all the data
     return X, y, X_test, y_test
 
+# read an image
+image_data = cv2.imread('interferance/pants.png', cv2.IMREAD_GRAYSCALE)
+# rezise the image to 28x28
+image_data = cv2.resize(image_data, (28, 28))
+
+# Invert image colors
+image_data = 255 - image_data
+
+# lets scale the values to correct form and value
+image_data = (image_data.reshape(1, -1).astype(np.float32) - 127.5) / 127.5
+
+
 X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
 
-
+fashion_mnist_labels = {
+    0: 'T-shirt/top',
+    1: 'Trousers',
+    2: 'Pullover',
+    3: 'Dress',
+    4: 'Coat',
+    5: 'Sandal',
+    6: 'Shirt',
+    7: 'Sneaker',
+    8: 'bag',
+    9: 'Ankle boot'
+}
 
 X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
 X_test = (X_test.reshape(X_test.shape[0], -1).astype(np.float32) -
@@ -978,61 +1081,45 @@ np.random.shuffle(keys)
 X = X[keys]
 y = y[keys]   
 
+model = Model.load('fashion_mnist.model')
+
+confidences = model.predict(image_data)
+predictions = model.output_layer_activation.predictions(confidences)
+
+for prediction in predictions:
+    print(fashion_mnist_labels[prediction]) 
 
 # y = y.reshape(-1, 1)
 # y_test = y_test.reshape(-1, 1)
 
-model = Model()
+# model = Model()
 
-# add layers
-model.add(layer_Dense(X.shape[1], 128))
-model.add(Activation_ReLU())
-model.add(layer_Dense(128,128))
-model.add(Activation_ReLU())
-model.add(layer_Dense(128,10))
-model.add(Activation_Softmax())
-
-
-# set loss and optimizer objects
-model.set(
-    loss=Loss_CategoricalCrossentropy(),
-    optimizer=Optmizer_Adam(decay=1e-3),
-    accuracy=Accuracy_Categorical()
-)
-
-# Finalize the model
-model.finalize()
-
-# Train the model
-model.train(X, y, validation_data=(X_test, y_test),
-            epochs=10, batch_size=128, print_every=100)
-
-parameters =  model.get_parameters()
-
-# new model
-
-model = Model()
-
-# add layers
-model.add(layer_Dense(X.shape[1], 128))
-model.add(Activation_ReLU())
-model.add(layer_Dense(128,128))
-model.add(Activation_ReLU())
-model.add(layer_Dense(128,10))
-model.add(Activation_Softmax())
+# # add layers
+# model.add(layer_Dense(X.shape[1], 128))
+# model.add(Activation_ReLU())
+# model.add(layer_Dense(128,128))
+# model.add(Activation_ReLU())
+# model.add(layer_Dense(128,10))
+# model.add(Activation_Softmax())
 
 
-# set loss and optimizer objects
-model.set(
-    loss=Loss_CategoricalCrossentropy(),
-    accuracy=Accuracy_Categorical()
-)
+# # set loss and optimizer objects
+# model.set(
+#     loss=Loss_CategoricalCrossentropy(),
+#     optimizer=Optmizer_Adam(decay=1e-3),
+#     accuracy=Accuracy_Categorical()
+# )
 
-# Finalize the model
-model.finalize()
+# # Finalize the model
+# model.finalize()
 
-# Set model with parameters instead of training it
-model.set_parameters(parameters)
+# # model.load_parameters('fashion_minst.parms')
+# # Train the model
+# model.train(X, y, validation_data=(X_test, y_test),
+#             epochs=10, batch_size=128, print_every=100)
+# model.evaluate(X_test, y_test)
+# parameters =  model.get_parameters()
 
-model.evaluate(X_test, y_test)
+
+
 

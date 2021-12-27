@@ -1,11 +1,14 @@
 import numpy as np
+import cv2
+import matplotlib.pyplot as plt
 
-softmax_output = [0.7, 0.1, 0.2]
+image_data = cv2.imread('interferance/tshirt.png', cv2.IMREAD_GRAYSCALE)
 
-softmax_output = np.array(softmax_output).reshape(-1,1)
-print(softmax_output)
+image_data = cv2.resize(image_data, (28, 28))
 
-print(np.diagflat(softmax_output))
-print(np.dot(softmax_output, softmax_output.T))
-print(np.diagflat(softmax_output) -
-        np.dot(softmax_output, softmax_output.T))
+plt.imshow(image_data, cmap='gray')
+plt.show()
+
+image_data = (image_data.reshape(1, -1).astype(np.float32) - 127.5) / 127.5
+
+print(image_data)
